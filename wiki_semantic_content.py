@@ -42,6 +42,34 @@ def download_content(content_type, content_name):
     return resultset
 
 
+def download_collection_intro(page_ids):
+    form_data = {
+        'action': 'query',
+        'format': 'json',
+        'prop': 'extracts',
+        'exlimit': 'max',
+        'pageids': "|".join(page_ids),
+        'redirects': '1'
+    }
+
+    url = "https://en.wikipedia.org/w/api.php?"+ urllib.parse.urlencode(form_data) + "&explaintext&exintro"
+    endpoint = urllib.request.urlopen(url)
+    request_content = endpoint.read()
+    encoding = endpoint.info().get_content_charset('utf-8')
+    json_content = json.loads(request_content.decode(encoding))
+    for page_id in page_ids:
+        # for now, skipping redirects
+        if page_id in json_content['query']['pages']:
+            summary = json_content['query']['pages'][page_id]['extract']
+            write_content("output/pages/" + page_id + ".txt", summary)
+
+
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
+
+
 def write_content(file_path, file_content):
     fn = file_path
     f = open(fn, 'w')
@@ -63,14 +91,20 @@ if __name__ == '__main__':
     categories = list()
     pages = list()
     separator = "###"
+    max_number_of_extracts = 20  # wikimedia api limitation
     for scraped_key in scraped_content.keys():
         list_of_contents = scraped_content[scraped_key]
         for content in list_of_contents:
             categories.append("{0}{1}{2}{1}{3}".format(scraped_key, separator, content.id, content.title))
             content.children = download_content(InformationType.Article.value, content.title)
+            page_ids = []
             for children in content.children:
                 pages.append("{0}{1}{2}{1}{3}{1}{4}{1}{5}".format(
                     scraped_key, separator, content.id, content.title, children.id, children.title))
+                page_ids.append(str(children.id))
+            batched_ids = batch(page_ids, max_number_of_extracts)
+            for b in batched_ids:
+                download_collection_intro(b)
 
     write_content("output/categories.txt", "\n".join(categories))
     write_content("output/pages.txt", "\n".join(pages))
