@@ -2,6 +2,10 @@ import json
 import urllib
 import urllib.request
 import urllib.parse
+import re
+import spacy
+import nltk
+from nltk.corpus import stopwords
 from enum import Enum
 
 
@@ -61,7 +65,7 @@ def download_collection_intro(page_ids):
         # for now, skipping redirects
         if page_id in json_content['query']['pages']:
             summary = json_content['query']['pages'][page_id]['extract']
-            write_content("output/pages/" + page_id + ".txt", summary)
+            write_content("output/pages/" + page_id + ".txt", summary, True)
 
 
 def batch(iterable, n=1):
@@ -70,7 +74,9 @@ def batch(iterable, n=1):
         yield iterable[ndx:min(ndx + n, l)]
 
 
-def write_content(file_path, file_content):
+def write_content(file_path, file_content, clean_content=False):
+    if clean_content:
+        file_content = cleaner(file_content)
     fn = file_path
     f = open(fn, 'w')
     f.write(file_content)
@@ -78,6 +84,24 @@ def write_content(file_path, file_content):
     f.close()
 
 
+def cleaner(text_content):
+    ''' Clean text data, apply spacy lemmatization and nltk stop words'''
+    text_content = re.sub("\.+\s",'\n', text_content)
+    sentences = list()
+    for text in text_content.split('\n'):
+        text = re.sub('{.*}', ' ', text)
+        text = re.sub('[^a-zA-Z]', ' ', text)  # remove numbers and characters not in latin alphabet
+        text = ' '.join(i.lemma_ for i in words(text)
+                        if i.lemma_ not in stop_words)
+        text = re.sub('-PRON-', ' ', text)  # added by spacy lemmatization ?? - remove
+        text = ' '.join(i for i in text.split() if len(i) != 1)  # remove redundant spaces and individual letters
+        sentences.append(text)
+
+    return "\n".join(sentences)
+
+nltk.download('stopwords')
+words = spacy.load('en')
+stop_words = stopwords.words('english')
 if __name__ == '__main__':
 
     categories_to_search = ['Category:Machine learning', 'Category:Business software']
