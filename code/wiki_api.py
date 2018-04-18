@@ -18,11 +18,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 class MyWikiDB():
     
     def __init__(self):
-        self.client=pymongo.MongoClient('35.174.105.75', 27016)
+        self.client=pymongo.MongoClient('35.174.105.75', 27017)
         self.dbr=self.client.myWiki
 
     def check_data_loaded(self):
-        ''' ouput dataframe of categories and pages loaded'''
+        ''' output dataframe of categories and pages loaded'''
         
         loads_cllr=self.dbr.loads_collection
         cursor=loads_cllr.find()
@@ -44,7 +44,7 @@ class MyWikiDB():
         
         return 
 
-# WikiSearch - searches loaded pages for related articles
+# WikiSearch - searchs loaded pages for related articles
         
 class WikiSearch():
     
@@ -53,7 +53,7 @@ class WikiSearch():
     functions:
     
     __init__ -> calls build_dtm_matrix -> calls build_corpus ->
-    returns dtm sparse matrix , dtm index and fitted tfidf
+    returns dtm sparse matrix , dtm index and fitted tf-idf
     
     search_myWiki -> returns  top 10 related articles
     
@@ -84,7 +84,7 @@ class WikiSearch():
         ''' 
         Build document term matrix and svd matrix for page extracts held in the mongodb pages_collection
         USE sparse matrix rather than dfs as cause memory issues
-        RERUN each time new content added to pages_collection
+        RE-RUN each time new content added to pages_collection
         ''' 
         self.build_corpus()
         
@@ -106,7 +106,7 @@ class WikiSearch():
         else :
             #vectorize search term with TFIDF vectorizer (previously fitted)
             s_term_encoded=self.tfidf_v.transform(s_term)
-            #print('step 1 done')
+            print('step 1 done')
             
             #add to existing document term matrix
             dtma_sp=self.dtm_sp.copy()
@@ -114,7 +114,7 @@ class WikiSearch():
             dtma_sp.indices=np.append(self.dtm_sp.indices,s_term_encoded.indices)
             dtma_sp.indptr=np.append(self.dtm_sp.indptr,(self.dtm_sp.indptr[-1]+s_term_encoded.indptr[-1]))
             dtma_sp._shape=(self.dtm_sp.shape[0]+1 , self.dtm_sp.shape[1])
-            #print('step 2 done')
+            print('step 2 done')
             
             #re fit SVD to augmented document term matrix
             svd_v = TruncatedSVD(n_components=100)
@@ -123,15 +123,15 @@ class WikiSearch():
             svd_index.append('search_term='+search_term)
             svdma=svd_v.fit_transform(dtma_sp)
             svdma_df=pd.DataFrame(svdma,index=svd_index , columns=component_names)
-            #print('step 3 done')
+            print('step 3 done')
             
             #find index of search term in refit SVD matrix
             s_term_svd_vector=svdma_df.loc['search_term='+search_term,:].values.reshape(1,-1)
-            #print('step 4 done')
+            print('step 4 done')
             
             #calculate cosine similarty of search term against other SVD vectors
             svdma_df['cosine_sim'] = cosine_similarity(svdma_df, s_term_svd_vector)
-            #print('step 5 done')
+            print('step 5 done')
             
             return svdma_df[['cosine_sim']].sort_values('cosine_sim', ascending=False).head(10)
 
@@ -155,7 +155,6 @@ class WikiAPI():
     'load_articles' -> calls 'read_articles' -> calls 'pull_wiki_page' & 'cleaner'
     'load_articles_test' - loads to pagetest collection  - version for testing during development
     """    
-
     
     def __init__(self, cat_name,depth=2, run=True):
         self.cat_name=cat_name
@@ -218,10 +217,8 @@ class WikiAPI():
                     subcats=subcats+new_s_subcats
                 r-=1
         
-        self.subcats=subcats
-        
+        self.subcats=subcats      
         return subcats , subcats_ids 
-    
     
     def wiki_pages(self):
         '''
@@ -300,9 +297,9 @@ class WikiAPI():
             print('loading page {}, {}'.format(i, page['title']))
             try:
                 pagetest_cllr.insert_one(self.read_articles(page))
-                #print('loaded',page)
+                print('loaded',page)
             except:
-                #print('not loaded',page)
+                print('not loaded',page)
                 d+=1
         end=pagetest_cllr.find().count()   
  
@@ -356,7 +353,6 @@ class WikiAPI():
         data=response.json()
         
         return data
-
     
     def pull_wiki_page(self, page):
         '''
@@ -420,8 +416,7 @@ class WikiAPI():
         #Add _id field as pageid - will be used as a unique index by Mongo
         page['_id']=page['pageid']
         #print('5 - page',page)
-        return page
-    
+        return page   
     
     def cleaner_old(self,text):
         ''' Clean text data, apply spacy lemmatization and nltk stop words'''
@@ -444,4 +439,4 @@ class WikiAPI():
                     if i.lemma_ not in self.nltk_stop)
         text = re.sub('-PRON-',' ',text)  # added by spacy lemmatization ?? - remove
         text = ' '.join(i for i in text.split() if len(i)!=1)  # remove redundant spaces and individual letters
-return text
+`       return text
