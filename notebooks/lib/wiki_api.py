@@ -18,7 +18,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 class MyWikiDB():
     
     def __init__(self):
-        self.client=pymongo.MongoClient('35.174.105.75', 27017)
+        self.client=pymongo.MongoClient('localhost', 27017)
         self.dbr=self.client.myWiki
 
     def check_data_loaded(self):
