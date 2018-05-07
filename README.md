@@ -1,2 +1,11 @@
-# Semantic search engine
-A semantic search engine for experiment with QT-inspired document representation.
+# Quantum-Inspired Evolutionary Approach for Document Representation
+
+# Requirements
+
+- nltk
+- spacy
+- sklearn
+- pandas
+- gensim
+- pymongo
+- qutip
